@@ -404,23 +404,16 @@ function stopSong() {
 }
 
 // ===== メロディー再生（アルプス一万尺＝ヤンキードゥードゥル、アメリカ民謡） =====
-// 歌の部分は「音符1つ＝元素1つ」で対応づけた並び [MIDIノート番号, 拍数, 元素番号]。
-// 元素番号が null の部分はランラララ（元素なし）。
-// ハイライトは各音符の開始時刻に合わせて切り替えるので、テンポを変えても
-// 音と歌詞（元素）の対応は崩れない。
+// 見本動画「歌って覚える周期表」のスライド切り替わり時刻を実測し、
+// 各元素の開始タイミングと長さをそのまま写した並び [MIDIノート番号, 長さ(0.1秒単位), 元素番号]。
+// 音もハイライトも同じ時刻表で動くので、テンポを変えても対応は崩れない。
+// 長さの実測値：H=11, Ne=10, Cl=11, Ar=10, Zn=10 の長い音がフレーズの区切り、Kr=30 が締め。
 const SONG_SEQ = [
- // 第1フレーズ（H〜O）
- [60,1,1],[60,1,2],[62,1,3],[64,1,4],[60,1,5],[64,1,6],[62,1,7],[55,2,8],
- // 第2フレーズ（F〜Si）
- [60,1,9],[60,1,10],[62,1,11],[64,1,12],[60,1,13],[59,3,14],
- // 第3フレーズ（P〜Ti）
- [60,1,15],[60,1,16],[62,1,17],[64,1,18],[60,1,19],[64,1,20],[62,1,21],[55,2,22],
- // 第4フレーズ（V〜Kr）※最後のドを2つに分けて Br と Kr に対応づけた
- [60,1,23],[60,1,24],[62,1,25],[64,1,26],[65,1,27],[64,1,28],[62,1,29],[60,1,30],[59,1,31],[55,1,32],[57,1,33],[59,1,34],[60,1,35],[60,1,36],
- // ランラララ（繰り返し部分、元素なし）
- [69,1,null],[71,1,null],[69,1,null],[67,1,null],[69,1,null],[71,1,null],[72,2,null],
- [69,1,null],[67,1,null],[69,1,null],[67,1,null],[65,1,null],[64,1,null],[67,1,null],[69,1,null],[71,2,null],
- [69,1,null],[67,1,null],[69,1,null],[71,1,null],[72,1,null],[69,1,null],[67,1,null],[72,1,null],[71,1,null],[74,1,null],[72,3,null]
+ [60,11,1],[60,2,2],[62,3,3],[64,3,4],[60,3,5],[64,3,6],[62,2,7],[55,1,8],
+ [60,6,9],[60,10,10],[62,3,11],[64,5,12],[60,6,13],[59,3,14],
+ [60,3,15],[60,3,16],[62,11,17],[64,10,18],[60,4,19],[64,2,20],
+ [62,6,21],[55,3,22],[60,3,23],[60,2,24],[62,3,25],[64,4,26],[65,1,27],[64,5,28],[62,2,29],[60,10,30],
+ [59,4,31],[55,2,32],[57,5,33],[59,6,34],[60,6,35],[60,30,36]
 ];
 let melodyNodes = [], melodyTimers = [];
 function highlightChip(n) {
@@ -437,12 +430,11 @@ function playMelody() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
   } catch (e) { alert('この端末では音が出せません'); return; }
   const tempo = parseFloat(document.getElementById('melody-tempo').value);
-  const beat = 0.40 / tempo;
+  const unit = 0.1 / tempo;
   const t0 = audioCtx.currentTime + 0.1;
   let t = t0;
-  let verseDone = false;
   SONG_SEQ.forEach(function(item) {
-    const midi = item[0], beats = item[1], el = item[2];
+    const midi = item[0], dur = item[1] * unit, el = item[2];
     const freq = 440 * Math.pow(2, (midi - 69) / 12);
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
@@ -450,18 +442,14 @@ function playMelody() {
     o.frequency.value = freq;
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(0.22, t + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.001, t + beats * beat * 0.95);
+    g.gain.setValueAtTime(0.22, t + Math.max(0.03, dur - 0.05));
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.98);
     o.connect(g); g.connect(audioCtx.destination);
-    o.start(t); o.stop(t + beats * beat);
+    o.start(t); o.stop(t + dur);
     melodyNodes.push(o);
     const delay = Math.max(0, (t - audioCtx.currentTime) * 1000);
-    if (el) {
-      melodyTimers.push(setTimeout(function() { highlightChip(el); }, delay));
-    } else if (!verseDone) {
-      verseDone = true;
-      melodyTimers.push(setTimeout(function() { highlightChip(null); }, delay));
-    }
-    t += beats * beat;
+    melodyTimers.push(setTimeout(function() { highlightChip(el); }, delay));
+    t += dur;
   });
   const btn = document.getElementById('melody-btn');
   if (btn) btn.textContent = '🎵 演奏中…';
