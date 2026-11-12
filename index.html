@@ -28,9 +28,10 @@
   .quiz-opt:disabled { opacity:.85; cursor:default; }
   #print-sheet { display:none; }
   @media print {
-    body * { visibility:hidden; }
-    #print-sheet, #print-sheet * { visibility:visible; }
-    #print-sheet { display:block; position:absolute; left:0; top:0; width:100%; padding:8mm; }
+    @page { size:A4 landscape; margin:10mm; }
+    html, body { height:auto !important; margin:0 !important; padding:0 !important; background:#fff !important; }
+    body > *:not(#print-sheet) { display:none !important; }
+    #print-sheet { display:block; position:static; width:100%; padding:0; }
     .print-table { border-collapse:collapse; width:100%; }
     .print-table td { border:1px solid #666; width:5.55%; height:52px; text-align:center; vertical-align:middle; font-size:10px; }
     .print-table td.empty { border:none; }
