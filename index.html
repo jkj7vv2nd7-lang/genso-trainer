@@ -108,21 +108,27 @@
     <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-md">
       <h2 class="text-xl font-bold text-slate-700 mb-1">🎵 元素歌 ―「アルプス一万尺」のメロディーで</h2>
       <p class="text-sm text-slate-600 mb-1">第4周期までの36元素を、元素名の順番そのままで歌います。昔の受験参考書でも紹介されていた覚え方です。</p>
-      <p class="text-xs text-slate-400 mb-4">※ メロディーは伝統曲（「ヤンキードゥードゥル」の系統）です。「▶ 順に読み上げ」を押すと、読み上げに合わせて元素名が光ります。一緒に口ずさんでみてください。</p>
+      <p class="text-xs text-slate-400 mb-4">※ メロディーはアメリカ民謡（「ヤンキードゥードゥル」）の伝統曲です。「🎵 メロディーを流す」を押すと、曲に合わせて元素名が順に光ります。声に出して一緒に歌ってみてください。読み上げだけの練習もできます。</p>
       <div class="flex items-center gap-2 mb-4 flex-wrap">
-        <button onclick="playSong()" id="song-play-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow transition">▶ 順に読み上げ</button>
-        <button onclick="stopSong()" class="bg-white hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-xl font-bold shadow transition">⏹ 止める</button>
+        <button onclick="playMelody()" id="melody-btn" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2 rounded-xl font-bold shadow transition">🎵 メロディーを流す</button>
+        <select id="melody-tempo" class="border rounded-lg px-2 py-2 text-sm font-bold bg-white">
+          <option value="0.8">ゆっくり</option>
+          <option value="1" selected>ふつう</option>
+          <option value="1.25">はやい</option>
+        </select>
+        <button onclick="playSong()" id="song-play-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow transition">▶ 読み上げで練習</button>
         <select id="song-rate" class="border rounded-lg px-2 py-2 text-sm font-bold bg-white">
           <option value="0.8">ゆっくり</option>
           <option value="1" selected>ふつう</option>
           <option value="1.25">はやい</option>
         </select>
+        <button onclick="stopSong()" class="bg-white hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-xl font-bold shadow transition">⏹ 止める</button>
       </div>
       <div id="song-lines" class="leading-9"></div>
       <div class="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
         <p class="text-sm font-bold text-amber-800 mb-1">1〜20番は語呂合わせでも</p>
-        <p class="text-base font-bold text-slate-700">水兵リーベ 僕の船、七曲がりシップス、クラークか</p>
-        <p class="text-xs text-slate-500 mt-1">水兵リーベ（H・He・Li・Be）／僕の船（B・C・N・O・F・Ne）／七曲がりシップス（Na・Mg・Al・Si・P・S）／クラークか（Cl・Ar・K・Ca）</p>
+        <p class="text-base font-bold text-slate-700">水兵リーベ 僕の船、名前があるシップス、クラークか</p>
+        <p class="text-xs text-slate-500 mt-1">水兵リーベ（H・He・Li・Be）／僕の船（B・C・N・O・F・Ne）／名前があるシップス（Na・Mg・Al・Si・P・S）／クラークか（Cl・Ar・K・Ca）</p>
       </div>
     </div>
   </div>
@@ -189,7 +195,7 @@
   <p style="font-size:11px;margin-bottom:8px;">名前：　　　　　　　　　　月　　日</p>
   <div id="print-table-wrap"></div>
   <h3 style="font-size:13px;font-weight:900;margin-top:12px;">語呂合わせ（1〜20番）</h3>
-  <p style="font-size:12px;">水兵リーベ 僕の船、七曲がりシップス、クラークか</p>
+  <p style="font-size:12px;">水兵リーベ 僕の船、名前があるシップス、クラークか</p>
   <h3 style="font-size:13px;font-weight:900;margin-top:10px;">元素歌（「アルプス一万尺」のメロディーで・1〜36番）</h3>
   <p id="print-song" style="font-size:12px;line-height:1.9;"></p>
 </div>
@@ -208,11 +214,11 @@ const ELEMENTS = [
  {n:8, s:"O", name:"酸素", g:16, p:2, cat:"非金属", mass:"16.00", fact:"空気の約21%。呼吸と燃焼を支える。", goro:"「僕の船」の船（ふね）の一員"},
  {n:9, s:"F", name:"フッ素", g:17, p:2, cat:"ハロゲン", mass:"19.00", fact:"最も反応性の高い元素。むし歯予防のフッ化物に。", goro:"「僕の船」の船（ふね）の一員"},
  {n:10, s:"Ne", name:"ネオン", g:18, p:2, cat:"希ガス", mass:"20.18", fact:"ネオンサインで赤橙色に光る希ガス。", goro:"「僕の船」の船（ふね）の一員"},
- {n:11, s:"Na", name:"ナトリウム", g:1, p:3, cat:"アルカリ金属", mass:"22.99", fact:"水と激しく反応する金属。食塩の成分。", goro:"「七曲がりシップス」の頭"},
- {n:12, s:"Mg", name:"マグネシウム", g:2, p:3, cat:"アルカリ土類金属", mass:"24.31", fact:"燃えるとまぶしく光る。葉緑素の中心元素。", goro:"「七曲がりシップス」の一員"},
- {n:13, s:"Al", name:"アルミニウム", g:13, p:3, cat:"その他の金属", mass:"26.98", fact:"軽くて丈夫な金属。アルミ缶や1円玉に。", goro:"「七曲がりシップス」の一員"},
+ {n:11, s:"Na", name:"ナトリウム", g:1, p:3, cat:"アルカリ金属", mass:"22.99", fact:"水と激しく反応する金属。食塩の成分。", goro:"「名前があるシップス」の「名」"},
+ {n:12, s:"Mg", name:"マグネシウム", g:2, p:3, cat:"アルカリ土類金属", mass:"24.31", fact:"燃えるとまぶしく光る。葉緑素の中心元素。", goro:"「名前があるシップス」の「前」"},
+ {n:13, s:"Al", name:"アルミニウム", g:13, p:3, cat:"その他の金属", mass:"26.98", fact:"軽くて丈夫な金属。アルミ缶や1円玉に。", goro:"「名前があるシップス」の「ある」"},
  {n:14, s:"Si", name:"ケイ素", g:14, p:3, cat:"半金属", mass:"28.09", fact:"半導体の主材料。砂・ガラスの主成分。", goro:"「シップス」のシ"},
- {n:15, s:"P", name:"リン", g:15, p:3, cat:"非金属", mass:"30.97", fact:"骨や歯の成分。赤リンはマッチの側薬。", goro:"「シップス」の「ッ」プ"},
+ {n:15, s:"P", name:"リン", g:15, p:3, cat:"非金属", mass:"30.97", fact:"骨や歯の成分。赤リンはマッチの側薬。", goro:"「シップス」のプ"},
  {n:16, s:"S", name:"硫黄", g:16, p:3, cat:"非金属", mass:"32.06", fact:"温泉のにおいのもと。ゴムや火薬にも。", goro:"「シップス」のス"},
  {n:17, s:"Cl", name:"塩素", g:17, p:3, cat:"ハロゲン", mass:"35.45", fact:"プールの消毒に。食塩のもう一方の成分。", goro:"「クラークか」のクラー"},
  {n:18, s:"Ar", name:"アルゴン", g:18, p:3, cat:"希ガス", mass:"39.95", fact:"空気の約0.9%を占める希ガス。溶接や電球に。", goro:"「クラークか」の「ク」"},
@@ -338,7 +344,12 @@ function renderSong() {
       const chip = document.createElement('span');
       chip.className = 'song-chip';
       chip.id = 'song-' + n;
-      chip.textContent = el.name;
+      chip.textContent = '';
+      const symSpan = document.createElement('span');
+      symSpan.style.cssText = 'color:#4f46e5;font-weight:900;margin-right:5px;';
+      symSpan.textContent = el.s;
+      chip.appendChild(symSpan);
+      chip.appendChild(document.createTextNode(el.name));
       chip.onclick = () => { switchTab('table'); showDetail(el); };
       row.appendChild(chip);
     });
@@ -371,10 +382,72 @@ function playSong() {
 }
 function stopSong() {
   songPlaying = false;
+  stopMelody();
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   document.querySelectorAll('.song-chip.now').forEach(c => c.classList.remove('now'));
   const btn = document.getElementById('song-play-btn');
-  if (btn) btn.textContent = '▶ 順に読み上げ';
+  if (btn) btn.textContent = '▶ 読み上げで練習';
+}
+
+// ===== メロディー再生（アルプス一万尺＝ヤンキードゥードゥル、アメリカ民謡） =====
+// [MIDIノート番号, 拍数] の並び。階名唱の公開譜をもとに起こした伝統旋律。
+const MELODY = [
+ // アルプス一万尺（小槍の上で）
+ [60,1],[60,1],[62,1],[64,1],[60,1],[64,1],[62,1],[55,2],
+ [60,1],[60,1],[62,1],[64,1],[60,1],[59,3],
+ [60,1],[60,1],[62,1],[64,1],[60,1],[64,1],[62,1],[55,2],
+ [60,1],[60,1],[62,1],[64,1],[65,1],[64,1],[62,1],[60,1],[59,1],[55,1],[57,1],[59,1],[60,2],
+ // ランラララ（繰り返し部分）
+ [69,1],[71,1],[69,1],[67,1],[69,1],[71,1],[72,2],
+ [69,1],[67,1],[69,1],[67,1],[65,1],[64,1],[67,1],[69,1],[71,2],
+ [69,1],[67,1],[69,1],[71,1],[72,1],[69,1],[67,1],[72,1],[71,1],[74,1],[72,3]
+];
+let melodyNodes = [], melodyTimer = null, melodyStart = 0, melodyDur = 0;
+function playMelody() {
+  stopSong();
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) { alert('この端末では音が出せません'); return; }
+  const tempo = parseFloat(document.getElementById('melody-tempo').value);
+  const beat = 0.40 / tempo;
+  const t0 = audioCtx.currentTime + 0.1;
+  let t = t0;
+  MELODY.forEach(function(pair) {
+    const midi = pair[0], beats = pair[1];
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'triangle';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.22, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + beats * beat * 0.95);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + beats * beat);
+    melodyNodes.push(o);
+    t += beats * beat;
+  });
+  melodyStart = performance.now() + 100;
+  melodyDur = (t - t0) * 1000;
+  const btn = document.getElementById('melody-btn');
+  if (btn) btn.textContent = '🎵 演奏中…';
+  melodyTimer = setInterval(function() {
+    const elapsed = performance.now() - melodyStart;
+    if (elapsed < 0) return;
+    if (elapsed >= melodyDur) { stopMelody(); return; }
+    const idx = Math.min(35, Math.floor(elapsed / melodyDur * 36));
+    document.querySelectorAll('.song-chip.now').forEach(c => c.classList.remove('now'));
+    const chip = document.getElementById('song-' + (idx + 1));
+    if (chip) chip.classList.add('now');
+  }, 90);
+}
+function stopMelody() {
+  melodyNodes.forEach(function(o) { try { o.stop(); } catch (e) {} });
+  melodyNodes = [];
+  if (melodyTimer) { clearInterval(melodyTimer); melodyTimer = null; }
+  const btn = document.getElementById('melody-btn');
+  if (btn) btn.textContent = '🎵 メロディーを流す';
 }
 
 // ===== 効果音 =====
