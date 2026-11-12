@@ -405,48 +405,25 @@ function stopSong() {
 }
 
 // ===== メロディー再生（アルプス一万尺＝ヤンキードゥードゥル、アメリカ民謡） =====
-// 清水さん自身の歌声（2回の録音）から実測した各元素の長さ（曲全体に対する割合、単位は1000分の1）と、
-// アルプス一万尺の「繰り返しなし」の形を前半（1〜20番）・後半（21〜36番）に1回ずつ当てた並び。
+// 音程は、出版されている「ヤンキードゥードゥル」の楽譜（Wikipedia掲載譜）の旋律をそのまま使う。
+// 第1の旋律（29音）→第2の旋律（28音）→第1の旋律の冒頭（7音）で、歌詞の64モーラに1音ずつ当てる。
+// 各音の始まる時刻は、清水さん自身の歌声（2回の録音）の写し取りから測った時刻表。
 // 音もハイライトも同じ時刻表で動くので、テンポを変えても対応は崩れない。
 const SONG_TOTAL = 17.5; // ふつうのときの曲の長さ（秒）。本人の歌声の平均に合わせた
-const SONG_SEQ = [
- [60,46,1],
- [60,13,2],
- [64,14,3],
- [60,20,4],
- [64,14,5],
- [55,15,6],
- [60,15,7],
- [62,14,8],
- [64,15,9],
- [60,45,10],
- [60,22,11],
- [60,23,12],
- [62,28,13],
- [65,22,14],
- [64,13,15],
- [60,15,16],
- [59,44,17],
- [55,64,18],
- [59,15,19],
- [60,27,20],
- [60,49,21],
- [62,21,22],
- [64,15,23],
- [64,29,24],
- [55,25,25],
- [60,12,26],
- [62,16,27],
- [60,18,28],
- [60,34,29],
- [62,37,30],
- [64,22,31],
- [64,27,32],
- [60,41,33],
- [55,42,34],
- [57,52,35],
- [60,74,36]
+const MELODY = [
+ 60,60,62,64, 60,64,62,59, 60,60,62,64, 60,59,55,
+ 60,60,62,64, 65,64,62,60, 59,55,57,59, 60,60,
+ 57,59,57,55, 57,59,60, 55,57,55,53, 52,53,55,
+ 57,59,57,55, 57,59,60,57, 55,60,59,62, 60,60,
+ 60,60,62,64, 60,64,62
 ];
+const MORA_ONSETS = [
+ 0.0, 0.0103, 0.0246, 0.0379, 0.051, 0.0648, 0.0783, 0.0921, 0.1066, 0.122, 0.1352, 0.1501, 0.1646, 0.18, 0.1954, 0.2105, 0.2253, 0.241, 0.2571, 0.2716, 0.2871, 0.3019, 0.3165, 0.3332, 0.3503, 0.366, 0.3816, 0.3957, 0.4098, 0.4236, 0.4395, 0.4554, 0.472, 0.489, 0.5059, 0.5194, 0.5377, 0.5559, 0.571, 0.585, 0.5988, 0.6162, 0.6349, 0.6488, 0.6637, 0.6809, 0.6971, 0.7142, 0.7304, 0.7493, 0.7673, 0.7853, 0.8011, 0.8139, 0.8274, 0.8413, 0.8575, 0.8704, 0.889, 0.9055, 0.9236, 0.9405, 0.9578, 0.9773
+];
+// 各元素のモーラ数と、最初のモーラの番号（0始まり）
+const EL_MORA_COUNT = [3,1,1,1,1,1,1,1,1,3, 1,2,2,1,1,1,3,4,1,2, 3,1,1,2,2,1,1,1,2,3, 1,1,2,3,3,5];
+const EL_MORA_START = [];
+(function() { let a = 0; EL_MORA_COUNT.forEach(function(c) { EL_MORA_START.push(a); a += c; }); })();
 let melodyNodes = [], melodyTimers = [];
 function highlightChip(n) {
   document.querySelectorAll('.song-chip.now').forEach(c => c.classList.remove('now'));
@@ -465,24 +442,30 @@ function playMelody() {
   const total = SONG_TOTAL / tempo;
   const t0 = audioCtx.currentTime + 0.1;
   let t = t0;
-  SONG_SEQ.forEach(function(item) {
-    const midi = item[0], dur = item[1] / 1000 * total, el = item[2];
+  MELODY.forEach(function(midi, i) {
+    const start = MORA_ONSETS[i] * total;
+    const end = (i + 1 < MORA_ONSETS.length ? MORA_ONSETS[i + 1] : 1.0) * total;
+    const dur = Math.max(0.05, end - start);
+    t = t0 + start;
     const freq = 440 * Math.pow(2, (midi - 69) / 12);
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = 'triangle';
     o.frequency.value = freq;
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.22, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.22, t + Math.min(0.03, dur * 0.3));
     g.gain.setValueAtTime(0.22, t + Math.max(0.03, dur - 0.05));
     g.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.98);
     o.connect(g); g.connect(audioCtx.destination);
     o.start(t); o.stop(t + dur);
     melodyNodes.push(o);
-    const delay = Math.max(0, (t - audioCtx.currentTime) * 1000);
-    melodyTimers.push(setTimeout(function() { highlightChip(el); }, delay));
-    t += dur;
   });
+  EL_MORA_START.forEach(function(moraIdx, j) {
+    const el = j + 1;
+    const delay = Math.max(0, (t0 + MORA_ONSETS[moraIdx] * total - audioCtx.currentTime) * 1000);
+    melodyTimers.push(setTimeout(function() { highlightChip(el); }, delay));
+  });
+  t = t0 + total;
   const btn = document.getElementById('melody-btn');
   if (btn) btn.textContent = '🎵 演奏中…';
   melodyTimers.push(setTimeout(function() { stopMelody(); }, (t - audioCtx.currentTime) * 1000 + 100));
