@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>元素周期表トレーニング ― 歌とクイズで覚える36元素</title>
+<meta name="description" content="第4周期までの36元素を、本物の周期表・元素歌（アルプス一万尺）・クイズで覚える学習アプリ">
+<link rel="icon" type="image/png" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#4f46e5">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .pt-grid { display:grid; grid-template-columns: repeat(18, minmax(0,1fr)); gap:3px; min-width:700px; }
+  .pt-cell { border-radius:8px; border:2px solid; padding:3px 2px 4px; text-align:center; cursor:pointer; transition:transform .08s, box-shadow .08s; background:#fff; }
+  .pt-cell:hover { transform:translateY(-2px); box-shadow:0 4px 10px rgba(0,0,0,.15); }
+  .pt-cell.selected { outline:3px solid #4f46e5; outline-offset:1px; }
+  .pt-cell .num { font-size:9px; font-weight:700; opacity:.7; display:block; line-height:1; }
+  .pt-cell .sym { font-size:15px; font-weight:900; display:block; line-height:1.25; }
+  .pt-cell .nm { font-size:8px; font-weight:700; display:block; line-height:1.1; white-space:nowrap; overflow:hidden; }
+  .pt-head { font-size:9px; font-weight:700; color:#94a3b8; text-align:center; align-self:end; padding-bottom:1px; }
+  .song-chip { display:inline-block; padding:4px 10px; margin:2px; border-radius:9999px; background:#eef2ff; border:1px solid #c7d2fe; font-weight:700; font-size:14px; transition:background .15s, color .15s, transform .15s; }
+  .song-chip.now { background:#4f46e5; color:#fff; transform:scale(1.12); }
+  .quiz-opt:disabled { opacity:.85; cursor:default; }
+  #print-sheet { display:none; }
+  @media print {
+    body * { visibility:hidden; }
+    #print-sheet, #print-sheet * { visibility:visible; }
+    #print-sheet { display:block; position:absolute; left:0; top:0; width:100%; padding:8mm; }
+    .print-table { border-collapse:collapse; width:100%; }
+    .print-table td { border:1px solid #666; width:5.55%; height:52px; text-align:center; vertical-align:middle; font-size:10px; }
+    .print-table td.empty { border:none; }
+    .print-table .ps { font-size:15px; font-weight:900; display:block; }
+    .print-table .pn { font-size:8px; display:block; }
+    .print-table .pnum { font-size:7px; display:block; color:#444; }
+  }
+</style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800">
+<div class="max-w-5xl mx-auto px-4 py-6">
+
+  <header class="text-center mb-6">
+    <div class="text-5xl mb-1">⚛️</div>
+    <h1 class="text-3xl font-extrabold text-indigo-700 mb-1">元素周期表トレーニング</h1>
+    <p class="text-slate-600 text-sm">第4周期までの36元素を、周期表・歌・クイズで覚えよう</p>
+  </header>
+
+  <!-- タブ -->
+  <div class="flex justify-center mb-6 gap-2 flex-wrap">
+    <button onclick="switchTab('table')" id="btn-table" class="px-5 py-2 rounded-lg font-bold shadow bg-indigo-600 text-white">周期表</button>
+    <button onclick="switchTab('song')" id="btn-song" class="px-5 py-2 rounded-lg font-bold shadow bg-white text-slate-700 hover:bg-slate-100">🎵 元素歌</button>
+    <button onclick="switchTab('quiz')" id="btn-quiz" class="px-5 py-2 rounded-lg font-bold shadow bg-white text-slate-700 hover:bg-slate-100">クイズ</button>
+    <button onclick="printSheet()" class="px-5 py-2 rounded-lg font-bold shadow bg-white text-slate-700 hover:bg-slate-100">🖨 A4シート印刷</button>
+  </div>
+
+  <!-- 周期表ビュー -->
+  <div id="view-table" class="space-y-4">
+    <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
+      <h2 class="text-lg font-bold mb-1 text-slate-700">周期表（1〜36番）</h2>
+      <p class="text-xs text-slate-500 mb-3">元素をタップすると、詳しい説明が出ます。横にスクロールできます。</p>
+      <div class="overflow-x-auto pb-2">
+        <div id="pt-grid" class="pt-grid"></div>
+      </div>
+      <div id="legend" class="flex flex-wrap gap-2 mt-3 text-xs font-bold"></div>
+    </div>
+
+    <!-- 詳細パネル -->
+    <div id="detail-card" class="bg-indigo-50 border border-indigo-200 p-5 sm:p-6 rounded-2xl shadow-inner hidden">
+      <div class="flex justify-between items-start gap-3 flex-wrap">
+        <div>
+          <span id="det-number" class="text-sm font-bold text-indigo-600 bg-white px-2 py-1 rounded shadow-sm">原子番号 1</span>
+          <span id="det-mass" class="text-sm font-bold text-slate-500 bg-white px-2 py-1 rounded shadow-sm ml-1">原子量 1.008</span>
+          <h3 id="det-name" class="text-3xl font-black text-slate-900 mt-2">水素（H）</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="speech-rate" class="border rounded-lg px-2 py-2 text-sm font-bold bg-white">
+            <option value="0.8">ゆっくり</option>
+            <option value="1" selected>ふつう</option>
+            <option value="1.2">はやい</option>
+          </select>
+          <button onclick="speakDetail()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold shadow transition">🔊 読み上げ</button>
+          <button onclick="stopSpeak()" class="bg-white hover:bg-slate-100 text-slate-700 px-3 py-2 rounded-xl font-bold shadow transition">⏹</button>
+        </div>
+      </div>
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="bg-white p-4 rounded-xl shadow-sm">
+          <span class="text-xs font-bold text-slate-400 block mb-1">分類・位置</span>
+          <p id="det-category" class="font-bold text-slate-700">-</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow-sm">
+          <span class="text-xs font-bold text-slate-400 block mb-1">覚え方</span>
+          <p id="det-goro" class="font-bold text-rose-600">-</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow-sm">
+          <span class="text-xs font-bold text-slate-400 block mb-1">特徴・受験ポイント</span>
+          <p id="det-fact" class="font-medium text-slate-700">-</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 元素歌ビュー -->
+  <div id="view-song" class="hidden space-y-4">
+    <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-md">
+      <h2 class="text-xl font-bold text-slate-700 mb-1">🎵 元素歌 ―「アルプス一万尺」のメロディーで</h2>
+      <p class="text-sm text-slate-600 mb-1">第4周期までの36元素を、元素名の順番そのままで歌います。昔の受験参考書でも紹介されていた覚え方です。</p>
+      <p class="text-xs text-slate-400 mb-4">※ メロディーは伝統曲（「ヤンキードゥードゥル」の系統）です。「▶ 順に読み上げ」を押すと、読み上げに合わせて元素名が光ります。一緒に口ずさんでみてください。</p>
+      <div class="flex items-center gap-2 mb-4 flex-wrap">
+        <button onclick="playSong()" id="song-play-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-xl font-bold shadow transition">▶ 順に読み上げ</button>
+        <button onclick="stopSong()" class="bg-white hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-xl font-bold shadow transition">⏹ 止める</button>
+        <select id="song-rate" class="border rounded-lg px-2 py-2 text-sm font-bold bg-white">
+          <option value="0.8">ゆっくり</option>
+          <option value="1" selected>ふつう</option>
+          <option value="1.25">はやい</option>
+        </select>
+      </div>
+      <div id="song-lines" class="leading-9"></div>
+      <div class="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <p class="text-sm font-bold text-amber-800 mb-1">1〜20番は語呂合わせでも</p>
+        <p class="text-base font-bold text-slate-700">水兵リーベ 僕の船、七曲がりシップス、クラークか</p>
+        <p class="text-xs text-slate-500 mt-1">水兵リーベ（H・He・Li・Be）／僕の船（B・C・N・O・F・Ne）／七曲がりシップス（Na・Mg・Al・Si・P・S）／クラークか（Cl・Ar・K・Ca）</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- クイズビュー -->
+  <div id="view-quiz" class="hidden">
+    <div class="bg-white p-5 sm:p-8 rounded-2xl shadow-md max-w-xl mx-auto">
+      <h2 class="text-2xl font-bold mb-4 text-slate-700 text-center">元素暗記クイズ</h2>
+      <div id="quiz-setup" class="space-y-4">
+        <div>
+          <label class="text-sm font-bold text-slate-500 block mb-1">範囲</label>
+          <select id="quiz-range" class="w-full border rounded-xl px-3 py-3 font-bold bg-white">
+            <option value="20" selected>1〜20番（基本）</option>
+            <option value="36">1〜36番（第4周期まで）</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm font-bold text-slate-500 block mb-1">問題の形式</label>
+          <select id="quiz-mode" class="w-full border rounded-xl px-3 py-3 font-bold bg-white">
+            <option value="mix" selected>ミックス</option>
+            <option value="num2name">原子番号 → 元素名</option>
+            <option value="sym2name">元素記号 → 元素名</option>
+            <option value="name2sym">元素名 → 元素記号</option>
+          </select>
+        </div>
+        <button onclick="startQuiz(false)" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow transition">スタート（10問）</button>
+        <p id="quiz-best" class="text-center text-sm text-slate-500 font-bold"></p>
+      </div>
+
+      <div id="quiz-main" class="hidden text-center">
+        <div class="flex justify-between text-sm font-bold text-slate-500 mb-2">
+          <span id="quiz-progress">1 / 10問</span>
+          <span id="quiz-score">スコア 0</span>
+          <span id="quiz-streak">🔥 0連続</span>
+        </div>
+        <p id="quiz-question" class="text-2xl font-black mb-6 text-slate-800">問題</p>
+        <div id="quiz-options" class="grid grid-cols-2 gap-3 mb-4"></div>
+        <p id="quiz-result" class="text-lg font-bold min-h-8"></p>
+        <p id="quiz-explain" class="text-sm text-slate-500 min-h-5 mb-2"></p>
+        <button id="quiz-next-btn" onclick="nextQuestion()" class="hidden mt-2 bg-slate-800 text-white px-6 py-2 rounded-xl font-bold hover:bg-slate-700">次の問題へ →</button>
+      </div>
+
+      <div id="quiz-finish" class="hidden text-center">
+        <p class="text-4xl mb-2">🏆</p>
+        <p id="quiz-final" class="text-2xl font-black mb-2">10問中 0問正解</p>
+        <p id="quiz-final-best" class="text-sm text-slate-500 font-bold mb-4"></p>
+        <div id="quiz-mistakes" class="text-left mb-4"></div>
+        <div class="flex gap-2 justify-center flex-wrap">
+          <button id="quiz-review-btn" onclick="startQuiz(true)" class="hidden bg-rose-600 hover:bg-rose-700 text-white px-5 py-2 rounded-xl font-bold shadow">間違いだけ復習</button>
+          <button onclick="backToSetup()" class="bg-slate-800 text-white px-5 py-2 rounded-xl font-bold hover:bg-slate-700">設定に戻る</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="text-center text-xs text-slate-400 mt-8">
+    <p>元素周期表トレーニング ― 第4周期までの36元素</p>
+  </footer>
+</div>
+
+<!-- 印刷用シート -->
+<div id="print-sheet">
+  <h2 style="font-size:18px;font-weight:900;margin-bottom:4px;">元素周期表（1〜36番）</h2>
+  <p style="font-size:11px;margin-bottom:8px;">名前：　　　　　　　　　　月　　日</p>
+  <div id="print-table-wrap"></div>
+  <h3 style="font-size:13px;font-weight:900;margin-top:12px;">語呂合わせ（1〜20番）</h3>
+  <p style="font-size:12px;">水兵リーベ 僕の船、七曲がりシップス、クラークか</p>
+  <h3 style="font-size:13px;font-weight:900;margin-top:10px;">元素歌（「アルプス一万尺」のメロディーで・1〜36番）</h3>
+  <p id="print-song" style="font-size:12px;line-height:1.9;"></p>
+</div>
+
+<script>
+// ===== データ：原子番号1〜36（第4周期まで） =====
+// n:原子番号 s:記号 name:名前 g:族 p:周期 cat:分類 mass:原子量 fact:特徴 goro:覚え方
+const ELEMENTS = [
+ {n:1, s:"H", name:"水素", g:1, p:1, cat:"非金属", mass:"1.008", fact:"宇宙で最も多い元素。最も軽い気体で、燃えると水になる。", goro:"「水兵リーベ」の水（すい）"},
+ {n:2, s:"He", name:"ヘリウム", g:18, p:1, cat:"希ガス", mass:"4.00", fact:"燃えない軽い気体。風船や飛行船に使われる。", goro:"「水兵リーベ」の兵（へい）"},
+ {n:3, s:"Li", name:"リチウム", g:1, p:2, cat:"アルカリ金属", mass:"6.94", fact:"最も軽い金属。リチウムイオン電池の主役。", goro:"「水兵リーベ」のリー"},
+ {n:4, s:"Be", name:"ベリリウム", g:2, p:2, cat:"アルカリ土類金属", mass:"9.01", fact:"軽くて硬い金属。宝石エメラルドの成分。", goro:"「水兵リーベ」のベ"},
+ {n:5, s:"B", name:"ホウ素", g:13, p:2, cat:"半金属", mass:"10.81", fact:"ホウ酸や耐熱ガラスの成分になる半金属。", goro:"「僕の船」の僕（ぼく）"},
+ {n:6, s:"C", name:"炭素", g:14, p:2, cat:"非金属", mass:"12.01", fact:"ダイヤモンドも黒鉛も炭素。有機物の骨格。", goro:"「僕の船」の「の」"},
+ {n:7, s:"N", name:"窒素", g:15, p:2, cat:"非金属", mass:"14.01", fact:"空気の約78%。たんぱく質や肥料に欠かせない。", goro:"「僕の船」の船（ふね）の一員"},
+ {n:8, s:"O", name:"酸素", g:16, p:2, cat:"非金属", mass:"16.00", fact:"空気の約21%。呼吸と燃焼を支える。", goro:"「僕の船」の船（ふね）の一員"},
+ {n:9, s:"F", name:"フッ素", g:17, p:2, cat:"ハロゲン", mass:"19.00", fact:"最も反応性の高い元素。むし歯予防のフッ化物に。", goro:"「僕の船」の船（ふね）の一員"},
+ {n:10, s:"Ne", name:"ネオン", g:18, p:2, cat:"希ガス", mass:"20.18", fact:"ネオンサインで赤橙色に光る希ガス。", goro:"「僕の船」の船（ふね）の一員"},
+ {n:11, s:"Na", name:"ナトリウム", g:1, p:3, cat:"アルカリ金属", mass:"22.99", fact:"水と激しく反応する金属。食塩の成分。", goro:"「七曲がりシップス」の頭"},
+ {n:12, s:"Mg", name:"マグネシウム", g:2, p:3, cat:"アルカリ土類金属", mass:"24.31", fact:"燃えるとまぶしく光る。葉緑素の中心元素。", goro:"「七曲がりシップス」の一員"},
+ {n:13, s:"Al", name:"アルミニウム", g:13, p:3, cat:"その他の金属", mass:"26.98", fact:"軽くて丈夫な金属。アルミ缶や1円玉に。", goro:"「七曲がりシップス」の一員"},
+ {n:14, s:"Si", name:"ケイ素", g:14, p:3, cat:"半金属", mass:"28.09", fact:"半導体の主材料。砂・ガラスの主成分。", goro:"「シップス」のシ"},
+ {n:15, s:"P", name:"リン", g:15, p:3, cat:"非金属", mass:"30.97", fact:"骨や歯の成分。赤リンはマッチの側薬。", goro:"「シップス」の「ッ」プ"},
+ {n:16, s:"S", name:"硫黄", g:16, p:3, cat:"非金属", mass:"32.06", fact:"温泉のにおいのもと。ゴムや火薬にも。", goro:"「シップス」のス"},
+ {n:17, s:"Cl", name:"塩素", g:17, p:3, cat:"ハロゲン", mass:"35.45", fact:"プールの消毒に。食塩のもう一方の成分。", goro:"「クラークか」のクラー"},
+ {n:18, s:"Ar", name:"アルゴン", g:18, p:3, cat:"希ガス", mass:"39.95", fact:"空気の約0.9%を占める希ガス。溶接や電球に。", goro:"「クラークか」の「ク」"},
+ {n:19, s:"K", name:"カリウム", g:1, p:4, cat:"アルカリ金属", mass:"39.10", fact:"炎色反応は紫色。肥料の三要素のひとつ。", goro:"「クラークか」の「か」の前"},
+ {n:20, s:"Ca", name:"カルシウム", g:2, p:4, cat:"アルカリ土類金属", mass:"40.08", fact:"骨・歯・貝殻の成分。石灰石やセメントにも。", goro:"「クラークか」の「か」"},
+ {n:21, s:"Sc", name:"スカンジウム", g:3, p:4, cat:"遷移金属", mass:"44.96", fact:"軽く強い合金に。自転車フレームなど。", goro:"元素歌の第4周期で"},
+ {n:22, s:"Ti", name:"チタン", g:4, p:4, cat:"遷移金属", mass:"47.87", fact:"軽くてさびにくい金属。航空機や眼鏡に。", goro:"元素歌の第4周期で"},
+ {n:23, s:"V", name:"バナジウム", g:5, p:4, cat:"遷移金属", mass:"50.94", fact:"鋼を硬くする元素。工具やバネに。", goro:"元素歌の第4周期で"},
+ {n:24, s:"Cr", name:"クロム", g:6, p:4, cat:"遷移金属", mass:"52.00", fact:"ステンレス鋼の成分。クロムめっきの光沢。", goro:"元素歌の第4周期で"},
+ {n:25, s:"Mn", name:"マンガン", g:7, p:4, cat:"遷移金属", mass:"54.94", fact:"乾電池の二酸化マンガンとして活躍。", goro:"元素歌の第4周期で"},
+ {n:26, s:"Fe", name:"鉄", g:8, p:4, cat:"遷移金属", mass:"55.85", fact:"最も身近な金属。血液のヘモグロビンにも含まれる。", goro:"元素歌の第4周期で"},
+ {n:27, s:"Co", name:"コバルト", g:9, p:4, cat:"遷移金属", mass:"58.93", fact:"コバルトブルーの顔料や電池材料に。", goro:"元素歌の第4周期で"},
+ {n:28, s:"Ni", name:"ニッケル", g:10, p:4, cat:"遷移金属", mass:"58.69", fact:"ステンレスや硬貨に使われる金属。", goro:"元素歌の第4周期で"},
+ {n:29, s:"Cu", name:"銅", g:11, p:4, cat:"遷移金属", mass:"63.55", fact:"電線の材料。10円玉（青銅）の主成分。", goro:"元素歌の第4周期で"},
+ {n:30, s:"Zn", name:"亜鉛", g:12, p:4, cat:"遷移金属", mass:"65.38", fact:"トタン（亜鉛めっき鋼板）や乾電池の負極に。", goro:"元素歌の第4周期で"},
+ {n:31, s:"Ga", name:"ガリウム", g:13, p:4, cat:"その他の金属", mass:"69.72", fact:"融点は約30℃。手のひらで溶ける金属。", goro:"元素歌の第4周期で"},
+ {n:32, s:"Ge", name:"ゲルマニウム", g:14, p:4, cat:"半金属", mass:"72.63", fact:"初期のトランジスタを支えた半導体。", goro:"元素歌の第4周期で"},
+ {n:33, s:"As", name:"ヒ素", g:15, p:4, cat:"半金属", mass:"74.92", fact:"化合物は猛毒で知られる半金属。", goro:"元素歌の第4周期で"},
+ {n:34, s:"Se", name:"セレン", g:16, p:4, cat:"非金属", mass:"78.97", fact:"太陽電池やコピー機の感光体に。", goro:"元素歌の第4周期で"},
+ {n:35, s:"Br", name:"臭素", g:17, p:4, cat:"ハロゲン", mass:"79.90", fact:"常温で液体の元素は、臭素と水銀だけ。", goro:"元素歌の第4周期で"},
+ {n:36, s:"Kr", name:"クリプトン", g:18, p:4, cat:"希ガス", mass:"83.80", fact:"照明やフラッシュランプに使われる希ガス。", goro:"元素歌の第4周期で"}
+];
+
+const CAT_COLORS = {
+ "アルカリ金属": "bg-rose-100 border-rose-300 text-rose-900",
+ "アルカリ土類金属": "bg-orange-100 border-orange-300 text-orange-900",
+ "遷移金属": "bg-sky-100 border-sky-300 text-sky-900",
+ "その他の金属": "bg-teal-100 border-teal-300 text-teal-900",
+ "半金属": "bg-lime-100 border-lime-300 text-lime-900",
+ "非金属": "bg-amber-100 border-amber-300 text-amber-900",
+ "ハロゲン": "bg-purple-100 border-purple-300 text-purple-900",
+ "希ガス": "bg-emerald-100 border-emerald-300 text-emerald-900"
+};
+const CAT_DOT = {
+ "アルカリ金属": "#fda4af", "アルカリ土類金属": "#fdba74", "遷移金属": "#7dd3fc",
+ "その他の金属": "#5eead4", "半金属": "#bef264", "非金属": "#fcd34d",
+ "ハロゲン": "#d8b4fe", "希ガス": "#6ee7b7"
+};
+
+// ===== 周期表の描画 =====
+let currentSelected = null;
+function renderTable() {
+  const grid = document.getElementById('pt-grid');
+  grid.innerHTML = '';
+  for (let g = 1; g <= 18; g++) {
+    const h = document.createElement('div');
+    h.className = 'pt-head';
+    h.style.gridColumn = g; h.style.gridRow = 1;
+    h.textContent = g;
+    grid.appendChild(h);
+  }
+  ELEMENTS.forEach(el => {
+    const cell = document.createElement('div');
+    cell.className = 'pt-cell ' + CAT_COLORS[el.cat];
+    cell.style.gridColumn = el.g;
+    cell.style.gridRow = el.p + 1;
+    cell.id = 'cell-' + el.n;
+    cell.innerHTML = '<span class="num">' + el.n + '</span><span class="sym">' + el.s + '</span><span class="nm">' + el.name + '</span>';
+    cell.onclick = () => showDetail(el);
+    grid.appendChild(cell);
+  });
+  const legend = document.getElementById('legend');
+  legend.innerHTML = '';
+  Object.keys(CAT_COLORS).forEach(cat => {
+    const chip = document.createElement('span');
+    chip.className = 'inline-flex items-center gap-1 bg-white border rounded-full px-2 py-1 shadow-sm';
+    chip.innerHTML = '<span style="width:10px;height:10px;border-radius:3px;background:' + CAT_DOT[cat] + ';display:inline-block;"></span>' + cat;
+    legend.appendChild(chip);
+  });
+}
+
+function showDetail(el) {
+  currentSelected = el;
+  document.querySelectorAll('.pt-cell.selected').forEach(c => c.classList.remove('selected'));
+  const cell = document.getElementById('cell-' + el.n);
+  if (cell) cell.classList.add('selected');
+  const panel = document.getElementById('detail-card');
+  panel.classList.remove('hidden');
+  document.getElementById('det-number').textContent = '原子番号 ' + el.n;
+  document.getElementById('det-mass').textContent = '原子量 ' + el.mass;
+  document.getElementById('det-name').textContent = el.name + '（' + el.s + '）';
+  document.getElementById('det-category').textContent = el.cat + '／第' + el.p + '周期・' + el.g + '族';
+  document.getElementById('det-goro').textContent = el.goro;
+  document.getElementById('det-fact').textContent = el.fact;
+  if (window.innerWidth < 768) panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ===== 読み上げ =====
+function speakText(text, rate) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP';
+  u.rate = rate || 1;
+  window.speechSynthesis.speak(u);
+}
+function speakDetail() {
+  if (!currentSelected) return;
+  const rate = parseFloat(document.getElementById('speech-rate').value);
+  speakText(currentSelected.name + '。元素記号 ' + currentSelected.s + '。原子番号 ' + currentSelected.n + '。' + currentSelected.fact, rate);
+}
+function stopSpeak() { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); }
+
+// ===== 元素歌 =====
+const SONG_LINES = [
+ {label:"第1・2周期", nums:[1,2,3,4,5,6,7,8,9,10]},
+ {label:"第3周期", nums:[11,12,13,14,15,16,17,18]},
+ {label:"第4周期 前半", nums:[19,20,21,22,23,24,25,26,27,28,29,30]},
+ {label:"第4周期 後半", nums:[31,32,33,34,35,36]}
+];
+function renderSong() {
+  const wrap = document.getElementById('song-lines');
+  wrap.innerHTML = '';
+  SONG_LINES.forEach(line => {
+    const row = document.createElement('div');
+    row.className = 'mb-2';
+    const lab = document.createElement('span');
+    lab.className = 'text-xs font-bold text-slate-400 mr-2';
+    lab.textContent = line.label;
+    row.appendChild(lab);
+    line.nums.forEach(n => {
+      const el = ELEMENTS[n - 1];
+      const chip = document.createElement('span');
+      chip.className = 'song-chip';
+      chip.id = 'song-' + n;
+      chip.textContent = el.name;
+      chip.onclick = () => { switchTab('table'); showDetail(el); };
+      row.appendChild(chip);
+    });
+    wrap.appendChild(row);
+  });
+  document.getElementById('print-song').textContent =
+    ELEMENTS.map(e => e.name).join('、');
+}
+let songPlaying = false;
+function playSong() {
+  if (!('speechSynthesis' in window)) { alert('この端末では読み上げが使えません'); return; }
+  stopSong();
+  songPlaying = true;
+  document.getElementById('song-play-btn').textContent = '🎵 読み上げ中…';
+  const rate = parseFloat(document.getElementById('song-rate').value);
+  let i = 0;
+  const step = () => {
+    if (!songPlaying || i >= 36) { stopSong(); return; }
+    const el = ELEMENTS[i];
+    document.querySelectorAll('.song-chip.now').forEach(c => c.classList.remove('now'));
+    const chip = document.getElementById('song-' + el.n);
+    if (chip) chip.classList.add('now');
+    const u = new SpeechSynthesisUtterance(el.name);
+    u.lang = 'ja-JP'; u.rate = rate;
+    u.onend = () => { i++; step(); };
+    u.onerror = () => { i++; step(); };
+    window.speechSynthesis.speak(u);
+  };
+  step();
+}
+function stopSong() {
+  songPlaying = false;
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  document.querySelectorAll('.song-chip.now').forEach(c => c.classList.remove('now'));
+  const btn = document.getElementById('song-play-btn');
+  if (btn) btn.textContent = '▶ 順に読み上げ';
+}
+
+// ===== 効果音 =====
+let audioCtx = null;
+function beep(freq, dur, type, when) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime + (when || 0);
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.15, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+function soundGood() { beep(880, 0.12, 'sine', 0); beep(1318, 0.2, 'sine', 0.1); }
+function soundBad() { beep(180, 0.25, 'square', 0); }
+
+// ===== クイズ =====
+let quiz = null;
+function shuffle(a) { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; }
+function bestKey() { return 'ptBest_' + document.getElementById('quiz-range').value + '_' + document.getElementById('quiz-mode').value; }
+function showBest() {
+  const v = localStorage.getItem(bestKey());
+  document.getElementById('quiz-best').textContent = v ? '🏅 この設定のベスト： ' + v + ' / 10問' : '';
+}
+function makeQuestion(pool, modeSetting) {
+  const el = pool[Math.floor(Math.random() * pool.length)];
+  let mode = modeSetting;
+  if (mode === 'mix') mode = ['num2name', 'sym2name', 'name2sym'][Math.floor(Math.random() * 3)];
+  let qText, answer, optField;
+  if (mode === 'num2name') { qText = '原子番号 ' + el.n + ' の元素名は？'; answer = el.name; optField = 'name'; }
+  else if (mode === 'sym2name') { qText = '元素記号 ' + el.s + ' の元素名は？'; answer = el.name; optField = 'name'; }
+  else { qText = el.name + ' の元素記号は？'; answer = el.s; optField = 's'; }
+  let opts = [answer];
+  const shuffledPool = shuffle(pool);
+  for (const cand of shuffledPool) {
+    if (opts.length >= 4) break;
+    if (!opts.includes(cand[optField])) opts.push(cand[optField]);
+  }
+  return { el: el, qText: qText, answer: answer, options: shuffle(opts) };
+}
+function startQuiz(reviewOnly) {
+  const range = parseInt(document.getElementById('quiz-range').value);
+  const modeSetting = document.getElementById('quiz-mode').value;
+  let pool = ELEMENTS.filter(e => e.n <= range);
+  let questions;
+  if (reviewOnly && quiz && quiz.mistakes.length) {
+    const mpool = quiz.mistakes;
+    questions = mpool.map(el => makeQuestion(pool, modeSetting));
+    pool = mpool.length >= 4 ? mpool : pool;
+    questions = mpool.map(el => makeQuestion(ELEMENTS.filter(e => e.n <= range), modeSetting));
+  } else {
+    questions = [];
+    const picked = shuffle(pool).slice(0, Math.min(10, pool.length));
+    questions = picked.map(el => {
+      let mode = modeSetting;
+      if (mode === 'mix') mode = ['num2name', 'sym2name', 'name2sym'][Math.floor(Math.random() * 3)];
+      let qText, answer, optField;
+      if (mode === 'num2name') { qText = '原子番号 ' + el.n + ' の元素名は？'; answer = el.name; optField = 'name'; }
+      else if (mode === 'sym2name') { qText = '元素記号 ' + el.s + ' の元素名は？'; answer = el.name; optField = 'name'; }
+      else { qText = el.name + ' の元素記号は？'; answer = el.s; optField = 's'; }
+      let opts = [answer];
+      for (const cand of shuffle(pool)) { if (opts.length >= 4) break; if (!opts.includes(cand[optField])) opts.push(cand[optField]); }
+      return { el: el, qText: qText, answer: answer, options: shuffle(opts) };
+    });
+  }
+  quiz = { questions: questions, idx: 0, score: 0, streak: 0, bestStreak: 0, mistakes: [], locked: false, review: !!reviewOnly };
+  document.getElementById('quiz-setup').classList.add('hidden');
+  document.getElementById('quiz-finish').classList.add('hidden');
+  document.getElementById('quiz-main').classList.remove('hidden');
+  renderQuestion();
+}
+function renderQuestion() {
+  const q = quiz.questions[quiz.idx];
+  quiz.locked = false;
+  document.getElementById('quiz-progress').textContent = (quiz.idx + 1) + ' / ' + quiz.questions.length + '問';
+  document.getElementById('quiz-score').textContent = 'スコア ' + quiz.score;
+  document.getElementById('quiz-streak').textContent = '🔥 ' + quiz.streak + '連続';
+  document.getElementById('quiz-question').textContent = 'Q. ' + q.qText;
+  document.getElementById('quiz-result').textContent = '';
+  document.getElementById('quiz-explain').textContent = '';
+  document.getElementById('quiz-next-btn').classList.add('hidden');
+  const wrap = document.getElementById('quiz-options');
+  wrap.innerHTML = '';
+  q.options.forEach(opt => {
+    const b = document.createElement('button');
+    b.className = 'quiz-opt p-3 rounded-xl border-2 border-slate-200 font-bold text-lg hover:bg-indigo-50 transition';
+    b.textContent = opt;
+    b.onclick = () => answer(b, opt);
+    wrap.appendChild(b);
+  });
+}
+function answer(btn, opt) {
+  if (quiz.locked) return;
+  quiz.locked = true;
+  const q = quiz.questions[quiz.idx];
+  const buttons = document.querySelectorAll('.quiz-opt');
+  buttons.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === q.answer) { b.classList.add('bg-emerald-100', 'border-emerald-400', 'text-emerald-800'); }
+  });
+  const res = document.getElementById('quiz-result');
+  if (opt === q.answer) {
+    quiz.score++; quiz.streak++;
+    quiz.bestStreak = Math.max(quiz.bestStreak, quiz.streak);
+    soundGood();
+    res.textContent = '🎉 正解！';
+    res.className = 'text-lg font-bold min-h-8 text-emerald-600';
+  } else {
+    quiz.streak = 0;
+    quiz.mistakes.push(q.el);
+    soundBad();
+    btn.classList.add('bg-rose-100', 'border-rose-400', 'text-rose-800');
+    res.textContent = '❌ 残念… 正解は「' + q.answer + '」';
+    res.className = 'text-lg font-bold min-h-8 text-rose-600';
+  }
+  document.getElementById('quiz-score').textContent = 'スコア ' + quiz.score;
+  document.getElementById('quiz-streak').textContent = '🔥 ' + quiz.streak + '連続';
+  document.getElementById('quiz-explain').textContent = q.el.n + '番 ' + q.el.name + '（' + q.el.s + '）― ' + q.el.fact;
+  const nb = document.getElementById('quiz-next-btn');
+  nb.textContent = (quiz.idx + 1 >= quiz.questions.length) ? '結果を見る →' : '次の問題へ →';
+  nb.classList.remove('hidden');
+}
+function nextQuestion() {
+  quiz.idx++;
+  if (quiz.idx >= quiz.questions.length) { finishQuiz(); return; }
+  renderQuestion();
+}
+function finishQuiz() {
+  document.getElementById('quiz-main').classList.add('hidden');
+  const fin = document.getElementById('quiz-finish');
+  fin.classList.remove('hidden');
+  document.getElementById('quiz-final').textContent = quiz.questions.length + '問中 ' + quiz.score + '問正解！（最大 ' + quiz.bestStreak + ' 連続正解）';
+  const fb = document.getElementById('quiz-final-best');
+  if (!quiz.review) {
+    const key = bestKey();
+    const prev = parseInt(localStorage.getItem(key) || '0');
+    if (quiz.score > prev) { localStorage.setItem(key, String(quiz.score)); fb.textContent = '🏅 ベスト更新！'; }
+    else fb.textContent = 'ベストは ' + prev + ' / 10問';
+  } else fb.textContent = '復習モードの結果です';
+  const mw = document.getElementById('quiz-mistakes');
+  const rb = document.getElementById('quiz-review-btn');
+  if (quiz.mistakes.length) {
+    rb.classList.remove('hidden');
+    mw.innerHTML = '<p class="font-bold text-slate-600 mb-1">間違えた元素</p>' + quiz.mistakes.map(el =>
+      '<p class="text-sm py-1 border-b border-slate-100"><b>' + el.n + ' ' + el.name + '（' + el.s + '）</b> ― ' + el.fact + '</p>').join('');
+  } else {
+    rb.classList.add('hidden');
+    mw.innerHTML = '<p class="font-bold text-emerald-600">全問正解！ 間違いはありませんでした 🎉</p>';
+  }
+}
+function backToSetup() {
+  document.getElementById('quiz-finish').classList.add('hidden');
+  document.getElementById('quiz-main').classList.add('hidden');
+  document.getElementById('quiz-setup').classList.remove('hidden');
+  showBest();
+}
+
+// ===== 印刷シート =====
+function buildPrintSheet() {
+  const wrap = document.getElementById('print-table-wrap');
+  let html = '<table class="print-table">';
+  for (let p = 1; p <= 4; p++) {
+    html += '<tr>';
+    for (let g = 1; g <= 18; g++) {
+      const el = ELEMENTS.find(e => e.p === p && e.g === g);
+      if (el) html += '<td><span class="pnum">' + el.n + '</span><span class="ps">' + el.s + '</span><span class="pn">' + el.name + '</span></td>';
+      else html += '<td class="empty"></td>';
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  wrap.innerHTML = html;
+}
+function printSheet() { buildPrintSheet(); window.print(); }
+
+// ===== タブ切り替え =====
+function switchTab(tab) {
+  stopSpeak(); stopSong();
+  ['table', 'song', 'quiz'].forEach(t => {
+    document.getElementById('view-' + t).classList.toggle('hidden', t !== tab);
+    const b = document.getElementById('btn-' + t);
+    b.className = (t === tab)
+      ? 'px-5 py-2 rounded-lg font-bold shadow bg-indigo-600 text-white'
+      : 'px-5 py-2 rounded-lg font-bold shadow bg-white text-slate-700 hover:bg-slate-100';
+  });
+}
+
+// ===== 初期化 =====
+renderTable();
+renderSong();
+buildPrintSheet();
+showBest();
+document.getElementById('quiz-range').addEventListener('change', showBest);
+document.getElementById('quiz-mode').addEventListener('change', showBest);
+showDetail(ELEMENTS[0]);
+</script>
+</body>
+</html>
