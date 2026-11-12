@@ -404,19 +404,32 @@ function stopSong() {
 }
 
 // ===== メロディー再生（アルプス一万尺＝ヤンキードゥードゥル、アメリカ民謡） =====
-// [MIDIノート番号, 拍数] の並び。階名唱の公開譜をもとに起こした伝統旋律。
-const MELODY = [
- // アルプス一万尺（小槍の上で）
- [60,1],[60,1],[62,1],[64,1],[60,1],[64,1],[62,1],[55,2],
- [60,1],[60,1],[62,1],[64,1],[60,1],[59,3],
- [60,1],[60,1],[62,1],[64,1],[60,1],[64,1],[62,1],[55,2],
- [60,1],[60,1],[62,1],[64,1],[65,1],[64,1],[62,1],[60,1],[59,1],[55,1],[57,1],[59,1],[60,2],
- // ランラララ（繰り返し部分）
- [69,1],[71,1],[69,1],[67,1],[69,1],[71,1],[72,2],
- [69,1],[67,1],[69,1],[67,1],[65,1],[64,1],[67,1],[69,1],[71,2],
- [69,1],[67,1],[69,1],[71,1],[72,1],[69,1],[67,1],[72,1],[71,1],[74,1],[72,3]
+// 歌の部分は「音符1つ＝元素1つ」で対応づけた並び [MIDIノート番号, 拍数, 元素番号]。
+// 元素番号が null の部分はランラララ（元素なし）。
+// ハイライトは各音符の開始時刻に合わせて切り替えるので、テンポを変えても
+// 音と歌詞（元素）の対応は崩れない。
+const SONG_SEQ = [
+ // 第1フレーズ（H〜O）
+ [60,1,1],[60,1,2],[62,1,3],[64,1,4],[60,1,5],[64,1,6],[62,1,7],[55,2,8],
+ // 第2フレーズ（F〜Si）
+ [60,1,9],[60,1,10],[62,1,11],[64,1,12],[60,1,13],[59,3,14],
+ // 第3フレーズ（P〜Ti）
+ [60,1,15],[60,1,16],[62,1,17],[64,1,18],[60,1,19],[64,1,20],[62,1,21],[55,2,22],
+ // 第4フレーズ（V〜Kr）※最後のドを2つに分けて Br と Kr に対応づけた
+ [60,1,23],[60,1,24],[62,1,25],[64,1,26],[65,1,27],[64,1,28],[62,1,29],[60,1,30],[59,1,31],[55,1,32],[57,1,33],[59,1,34],[60,1,35],[60,1,36],
+ // ランラララ（繰り返し部分、元素なし）
+ [69,1,null],[71,1,null],[69,1,null],[67,1,null],[69,1,null],[71,1,null],[72,2,null],
+ [69,1,null],[67,1,null],[69,1,null],[67,1,null],[65,1,null],[64,1,null],[67,1,null],[69,1,null],[71,2,null],
+ [69,1,null],[67,1,null],[69,1,null],[71,1,null],[72,1,null],[69,1,null],[67,1,null],[72,1,null],[71,1,null],[74,1,null],[72,3,null]
 ];
-let melodyNodes = [], melodyTimer = null, melodyStart = 0, melodyDur = 0;
+let melodyNodes = [], melodyTimers = [];
+function highlightChip(n) {
+  document.querySelectorAll('.song-chip.now').forEach(c => c.classList.remove('now'));
+  if (n) {
+    const chip = document.getElementById('song-' + n);
+    if (chip) chip.classList.add('now');
+  }
+}
 function playMelody() {
   stopSong();
   try {
@@ -427,8 +440,9 @@ function playMelody() {
   const beat = 0.40 / tempo;
   const t0 = audioCtx.currentTime + 0.1;
   let t = t0;
-  MELODY.forEach(function(pair) {
-    const midi = pair[0], beats = pair[1];
+  let verseDone = false;
+  SONG_SEQ.forEach(function(item) {
+    const midi = item[0], beats = item[1], el = item[2];
     const freq = 440 * Math.pow(2, (midi - 69) / 12);
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
@@ -440,26 +454,25 @@ function playMelody() {
     o.connect(g); g.connect(audioCtx.destination);
     o.start(t); o.stop(t + beats * beat);
     melodyNodes.push(o);
+    const delay = Math.max(0, (t - audioCtx.currentTime) * 1000);
+    if (el) {
+      melodyTimers.push(setTimeout(function() { highlightChip(el); }, delay));
+    } else if (!verseDone) {
+      verseDone = true;
+      melodyTimers.push(setTimeout(function() { highlightChip(null); }, delay));
+    }
     t += beats * beat;
   });
-  melodyStart = performance.now() + 100;
-  melodyDur = (t - t0) * 1000;
   const btn = document.getElementById('melody-btn');
   if (btn) btn.textContent = '🎵 演奏中…';
-  melodyTimer = setInterval(function() {
-    const elapsed = performance.now() - melodyStart;
-    if (elapsed < 0) return;
-    if (elapsed >= melodyDur) { stopMelody(); return; }
-    const idx = Math.min(35, Math.floor(elapsed / melodyDur * 36));
-    document.querySelectorAll('.song-chip.now').forEach(c => c.classList.remove('now'));
-    const chip = document.getElementById('song-' + (idx + 1));
-    if (chip) chip.classList.add('now');
-  }, 90);
+  melodyTimers.push(setTimeout(function() { stopMelody(); }, (t - audioCtx.currentTime) * 1000 + 100));
 }
 function stopMelody() {
   melodyNodes.forEach(function(o) { try { o.stop(); } catch (e) {} });
   melodyNodes = [];
-  if (melodyTimer) { clearInterval(melodyTimer); melodyTimer = null; }
+  melodyTimers.forEach(function(id) { clearTimeout(id); });
+  melodyTimers = [];
+  highlightChip(null);
   const btn = document.getElementById('melody-btn');
   if (btn) btn.textContent = '🎵 メロディーを流す';
 }
